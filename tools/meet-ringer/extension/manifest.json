@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "Meet Ringer",
+  "version": "1.1.1",
+  "description": "Rings when someone joins your Google Meet meeting, before you join.",
+  "permissions": [
+    "alarms",
+    "storage",
+    "notifications",
+    "offscreen",
+    "tabs",
+    "system.display",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://calendar.google.com/*",
+    "https://meet.google.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Meet Ringer",
+    "default_icon": {
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "block-media.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://script.googleusercontent.com/*",
+        "https://script.google.com/*"
+      ],
+      "js": [
+        "feed.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "icons": {
+    "128": "icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqvNNiP14H3NaD8TA9ue6L1bCxePezzmpOtwPhm5AUNnyEi1hV000OHUW4xaSnjFv6LURt2R8WjmcOu0Snm0xMUmRVzaYhbhqsioOjwV31Wvf3TUHGY25YWKUPAeTN3GqxFdgbgCxnt2sCpQy7WeKvROECJA6fmTwp/a0m2/giNDtbF+tz1U0NYXzl/LCP66jrAwMsa6+sQaUdHXxuiTfn8AJ1c2s0jV64Le+csS1kkPgdIM+gVkCCwnsR38S2xFfgz5qobSrXFrT+Jyv9dkgllrjHBg+BgAuIE0kcll1jN+2D/d6RmGT1WTZO+IQr/7UjZcMtjb/duCQS/I9jjTfvQIDAQAB"
+}

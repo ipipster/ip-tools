@@ -1,0 +1,30 @@
+# Secrets and local config - never commit these
+.env
+.env.*
+!.env.example
+*.local.json
+config.json
+!config.example.json
+secrets/
+*.pem
+*.key
+*.crx
+*.p12
+*.pfx
+
+# Build output (release zips are attached to GitHub Releases, not committed)
+dist/
+*.zip
+
+# Dependencies and caches
+node_modules/
+__pycache__/
+*.pyc
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp

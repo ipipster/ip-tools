@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  meet-ringer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/meet-ringer/extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript syntax
+        run: |
+          for f in content.js feed.js offscreen.js ring.js popup.js block-media.js; do node --check "$f"; done
+          node --input-type=module --check < background.js
+      - name: manifest.json is valid JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
+      - name: Windows helper matches its readable source
+        working-directory: .
+        run: python3 scripts/meet_ringer_helper.py --check

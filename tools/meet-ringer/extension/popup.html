@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  :root { --bg:#FFFFFF; --ink:#16282D; --soft:#5E7379; --line:#DCE6E8; --brand:#0F3A45; --signal:#FFC83D; --err:#B3261E; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14262B; --ink:#EAF2F3; --soft:#9DB3B8; --line:#2A4248; --brand:#7FC6D6; --err:#FF8A80; } }
+  * { box-sizing:border-box; }
+  body { margin:0; width:360px; background:var(--bg); color:var(--ink);
+    font:13px/1.45 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif; }
+  header { padding:14px 16px 10px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); }
+  header img { width:26px; height:26px; }
+  header h1 { font-size:15px; margin:0; }
+  section { padding:12px 16px; border-bottom:1px solid var(--line); }
+  h2 { font-size:13px; margin:0 0 6px; color:var(--brand); }
+  .status { color:var(--soft); }
+  .err { color:var(--err); }
+  ul { list-style:none; padding:0; margin:0; }
+  li { display:flex; justify-content:space-between; gap:8px; padding:3px 0; }
+  li span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  li .t { color:var(--soft); flex:none; }
+  label { display:block; margin:6px 0 2px; color:var(--soft); }
+  input, select { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:transparent; color:inherit; font:inherit; }
+  .row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .buttons { display:flex; gap:8px; flex-wrap:wrap; }
+  button { border:1px solid var(--line); background:transparent; color:inherit; border-radius:6px; padding:6px 10px; font:inherit; cursor:pointer; }
+  button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  @media (prefers-color-scheme: dark) { button.primary { color:#0E2328; } }
+  button:disabled { opacity:.45; cursor:default; }
+  button:focus-visible, input:focus-visible { outline:2px solid var(--signal); outline-offset:1px; }
+  button.x { padding:0 6px; border:0; color:var(--soft); }
+  details summary { cursor:pointer; color:var(--soft); }
+  pre { white-space:pre-wrap; word-break:break-word; font-size:11px; margin:6px 0 0; color:var(--soft); }
+</style></head>
+<body>
+<header><img src="icon128.png" alt=""><h1>Meet Ringer</h1></header>
+
+<section>
+  <h2>Watching now</h2>
+  <ul id="watches"></ul>
+  <div class="buttons" style="margin-top:8px">
+    <button id="watchCurrent" class="primary">Watch this meeting</button>
+    <button id="test">Test ring</button>
+  </div>
+</section>
+
+<section>
+  <h2>Upcoming Meet meetings</h2>
+  <ul id="events"></ul>
+  <p id="calStatus" class="status"></p>
+</section>
+
+<section>
+  <h2>Settings</h2>
+  <label for="icalUrl">Calendar feed URL (Apps Script web app or secret iCal address)</label>
+  <input id="icalUrl" placeholder="https://script.google.com/macros/s/.../exec?token=...">
+  <div class="row">
+    <div><label for="leadMin">Start before (min)</label><input id="leadMin" type="number" min="0" max="60"></div>
+    <div><label for="lateMin">Keep after (min)</label><input id="lateMin" type="number" min="1" max="120"></div>
+    <div><label for="ringSec">Ring (sec)</label><input id="ringSec" type="number" min="5" max="120"></div>
+  </div>
+  <label for="joinIn">Join opens the meeting in</label>
+  <select id="joinIn">
+    <option value="tab">A new tab (or the Meet app, if it captures Meet links)</option>
+    <option value="helper">The installed Meet app (Windows helper needed)</option>
+    <option value="window">A separate window</option>
+  </select>
+  <div id="helperBox">
+    <label for="launcher">Meet app shortcut target (right-click the Meet app shortcut > Properties > Target)</label>
+    <input id="launcher" placeholder='"C:\...\chrome_proxy.exe" --profile-directory=Default --app-id=...'>
+    <div class="buttons" style="margin-top:6px"><button id="checkHelper">Check helper</button><span id="helperStatus" class="status"></span></div>
+  </div>
+  <label for="authuser">Google account index (authuser, only if you use several accounts)</label>
+  <input id="authuser" placeholder="optional">
+  <div class="buttons" style="margin-top:10px">
+    <button id="save" class="primary">Save</button>
+    <button id="refresh">Refresh calendar</button>
+  </div>
+</section>
+
+<section>
+  <details><summary>Diagnostics log</summary>
+    <div class="buttons" style="margin-top:6px"><button id="copyLog">Copy log</button><button id="clearLog">Clear</button></div>
+    <pre id="log">No data yet.</pre></details>
+</section>
+<script src="popup.js"></script>
+</body></html>

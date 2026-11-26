@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Meet Ringer</title>
+<style>
+  :root { --bg:#0F3A45; --ink:#FFFFFF; --soft:#B9D3D9; --signal:#FFC83D; --join:#1E9E5A; --dismiss:#5B6F75; }
+  * { box-sizing:border-box; }
+  body { margin:0; height:100vh; background:var(--bg); color:var(--ink);
+    font:15px/1.4 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;
+    display:grid; grid-template-rows:1fr auto; padding:18px 20px 16px; }
+  .head { display:flex; gap:14px; align-items:center; }
+  .bell { width:46px; height:46px; border-radius:50%; background:var(--signal); flex:none;
+    display:grid; place-items:center; font-size:24px; }
+  .ringing .bell { animation:pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,200,61,.7);} 50% { box-shadow:0 0 0 12px rgba(255,200,61,0);} }
+  @media (prefers-reduced-motion: reduce) { .ringing .bell { animation:none; } }
+  h1 { font-size:18px; margin:0; font-weight:650; }
+  p { margin:2px 0 0; color:var(--soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:270px; }
+  .actions { display:flex; gap:10px; }
+  button { flex:1; border:0; border-radius:8px; padding:11px; font:inherit; font-weight:600; color:#fff; cursor:pointer; }
+  button:focus-visible { outline:3px solid var(--signal); outline-offset:2px; }
+  #join { background:var(--join); } #dismiss { background:var(--dismiss); }
+</style></head>
+<body class="ringing">
+  <div class="head">
+    <div class="bell" aria-hidden="true">🔔</div>
+    <div><h1 id="who"></h1><p id="title"></p><p id="when"></p></div>
+  </div>
+  <div class="actions">
+    <button id="join">Join</button>
+    <button id="dismiss">Dismiss</button>
+  </div>
+<script src="ring.js"></script>
+</body></html>
