@@ -81,7 +81,7 @@ To check the feed, open the URL in the browser: it should return `{"events":[...
 6. **If more than one Google account is signed in to the browser**, enter your work email in **Google account** and click **Save**. Otherwise the watch tab opens Meet as an outside guest, Meet does not show guests who is already in the call, and nothing rings.
 7. Optional: pick a ringtone (see [Ringtones](#ringtones)). Click **Test ring** to check the sound, the call window and the notification.
 
-**To update:** unzip the new version over the same folder and click the reload button on Meet Ringer in `chrome://extensions`. Settings are kept.
+**To update:** unzip the new version over the same folder and click the reload button on Meet Ringer in `chrome://extensions`. Settings are kept when you update from 1.1.0 or later. Coming from 1.0.x (or a zip based on it): remove the old extension, load the new folder with **Load unpacked** and enter your settings once more, because 1.1.0 gave the extension a fixed ID and settings belong to the ID. Your Apps Script feed and its URL keep working.
 
 ### Step 3: Quick test
 
