@@ -1,9 +1,10 @@
 import ICAL from './lib/ical.js';
 
-const DEFAULTS = { icalUrl: '', leadMin: 3, lateMin: 15, ringSec: 30, authuser: '', joinIn: 'tab', launcher: '' };
+const DEFAULTS = { icalUrl: '', leadMin: 3, lateMin: 15, ringSec: 30, authuser: '', ringtone: 'classic', snoozeMin: 5, keepWatching: false, joinIn: 'tab', launcher: '' };
 const HELPER = 'com.meetringer.launcher';
 const CAL_REFRESH_MS = 10 * 60 * 1000;
 const MANUAL_WATCH_MS = 60 * 60 * 1000;
+const REWATCH_MIN_MS = 15 * 60 * 1000;
 const MEET_CODE_RE = /meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/i;
 
 // ---------- storage helpers ----------
@@ -15,7 +16,8 @@ async function bag(name) { const r = await get(name); return r[name] || {}; }
 function meetUrl(code, authuser, watch) {
   let url = `https://meet.google.com/${code}`;
   if (authuser !== '' && authuser != null) url += `?authuser=${encodeURIComponent(authuser)}`;
-  if (watch) url += '#meetringer-watch';
+  if (watch === 'join') url += '#meetringer-join';
+  else if (watch) url += '#meetringer-watch';
   return url;
 }
 
@@ -108,10 +110,14 @@ async function refreshCalendar(force = false) {
       // No cookies: Apps Script answers with "Access-Control-Allow-Origin: *", which browsers
       // refuse for credentialed requests. An "Anyone" feed works directly; an org-only feed falls back to a tab.
       let data = null;
-      try {
-        const res = await fetch(s.icalUrl, { cache: 'no-store', credentials: 'omit', redirect: 'follow' });
-        if (res.ok) data = JSON.parse(await res.text());
-      } catch (e) { data = null; } // sign-in redirect, CORS or non-JSON answer
+      const { feedNeedsTab } = await get('feedNeedsTab');
+      if (feedNeedsTab !== s.icalUrl) {
+        try {
+          const res = await fetch(s.icalUrl, { cache: 'no-store', credentials: 'omit', redirect: 'follow' });
+          if (res.ok) data = JSON.parse(await res.text());
+        } catch (e) { data = null; } // sign-in redirect, CORS or non-JSON answer
+        if (!data) await set({ feedNeedsTab: s.icalUrl });
+      }
       if (!data) {
         // Feed limited to the organization: it needs the Google sign-in, which a background
         // request cannot send. Load it in a short-lived tab instead (feed.js reads the result).
@@ -186,17 +192,51 @@ async function openWatchTab(url) {
   }
 }
 
-async function startWatch(key, ev, manual = false) {
+async function startWatch(key, ev, manual = false, opts = {}) {
   const s = await settings();
   const tabId = await openWatchTab(meetUrl(ev.code, s.authuser, true));
   try { await chrome.tabs.update(tabId, { muted: true, autoDiscardable: false }); } catch (e) { /* ignore */ }
   const watches = await bag('watches');
   watches[key] = {
-    tabId, code: ev.code, title: ev.title, manual, loadedAt: Date.now(),
-    until: manual ? Date.now() + MANUAL_WATCH_MS : ev.start + s.lateMin * 60000
+    tabId, code: ev.code, title: ev.title, manual, loadedAt: Date.now(), end: ev.end || null,
+    until: opts.until || (manual ? Date.now() + MANUAL_WATCH_MS : ev.start + s.lateMin * 60000),
+    armOnEmpty: !!opts.armOnEmpty, sawEmpty: false
   };
   await set({ watches });
-  await log(`Watch started: ${ev.title} (${ev.code}), tab ${tabId}`);
+  await log(`Watch started: ${ev.title} (${ev.code}), tab ${tabId}${opts.reason ? ' (' + opts.reason + ')' : ''}`);
+}
+
+function rewatchUntil(ev) { return Math.max(ev.end || 0, Date.now() + REWATCH_MIN_MS); }
+
+async function rewatch(key, opts) {
+  const { events = [] } = await get('events');
+  const ev = events.find(e => e.key === key);
+  if (!ev) return false;
+  if ((await bag('watches'))[key]) return false;
+  const handled = await bag('handled'); delete handled[key];
+  const snoozed = await bag('snoozed'); delete snoozed[key];
+  await set({ handled, snoozed });
+  await startWatch(key, ev, false, { until: rewatchUntil(ev), ...opts });
+  return true;
+}
+
+async function snooze(key, r) {
+  const s = await settings();
+  const snoozed = await bag('snoozed');
+  snoozed[key] = { at: Date.now() + s.snoozeMin * 60000, code: r.code, title: r.title, end: r.end || null };
+  await set({ snoozed });
+  await log(`Snoozed: ${r.title} (watching again in ${s.snoozeMin} min)`);
+}
+
+async function meetingLeft(code) {
+  const s = await settings();
+  if (!s.keepWatching) return;
+  const { events = [] } = await get('events');
+  const now = Date.now();
+  const ev = events.find(e => e.code === code && now < (e.end || 0));
+  if (!ev) { await log(`You left ${code}; not a calendar meeting still running, so not watching again`); return; }
+  if (Object.values(await bag('watches')).some(w => w.code === code)) return;
+  await rewatch(ev.key, { armOnEmpty: true, reason: 'you left; rings after the room is empty and someone joins' });
 }
 
 async function stopWatch(key, markHandled = true, reason = '') {
@@ -244,8 +284,19 @@ async function tick() {
   for (const [key, w] of Object.entries(await bag('watches'))) {
     if (now > w.until) await stopWatch(key, true, 'watch window ended');
   }
+  const snoozed = await bag('snoozed');
+  let snoozeChanged = false;
+  for (const [key, z] of Object.entries(snoozed)) {
+    if (now < z.at) continue;
+    delete snoozed[key]; snoozeChanged = true;
+    if ((await bag('watches'))[key]) continue;
+    const handledNow = await bag('handled'); delete handledNow[key]; await set({ handled: handledNow });
+    await startWatch(key, { code: z.code, title: z.title, end: z.end }, key.startsWith('manual:'),
+      { until: Math.max(z.end || 0, now + REWATCH_MIN_MS), reason: 'snooze ended' });
+  }
+  if (snoozeChanged) await set({ snoozed });
   for (const ev of events) {
-    if (handled[ev.key] || watches[ev.key]) continue;
+    if (handled[ev.key] || watches[ev.key] || snoozed[ev.key]) continue;
     if (now >= ev.start - s.leadMin * 60000 && now <= ev.start + s.lateMin * 60000) {
       await startWatch(ev.key, ev);
     }
@@ -270,15 +321,29 @@ async function ringWindowPosition(w, h) {
   } catch (e) { return {}; }
 }
 
+// The offscreen page cannot read storage: hand it the tone, plus the file data or gap it needs.
+async function toneForRing(tone) {
+  if (tone === 'custom') {
+    const { customTone } = await get('customTone');
+    return customTone && customTone.data ? { tone, opts: { data: customTone.data } } : { tone: 'classic' };
+  }
+  if (String(tone || '').startsWith('f:')) {
+    const { folderTones = [] } = await get('folderTones');
+    const m = folderTones.find(t => t.key === tone);
+    return m ? { tone, opts: { gap: m.gap } } : { tone: 'classic' };
+  }
+  return { tone: tone || 'classic' };
+}
+
 async function ring(key, info) {
   const s = await settings();
   const ringing = await bag('ringing');
   if (ringing[key]) return;
 
   await ensureOffscreen();
-  chrome.runtime.sendMessage({ target: 'offscreen', type: 'start', seconds: s.ringSec });
+  chrome.runtime.sendMessage({ target: 'offscreen', type: 'start', seconds: s.ringSec, ...(await toneForRing(s.ringtone)) });
 
-  const width = 380, height = 230;
+  const width = 480, height = 150;
   const win = await chrome.windows.create({
     url: `ring.html?key=${encodeURIComponent(key)}`, type: 'popup', width, height, focused: true,
     ...(await ringWindowPosition(width, height))
@@ -288,14 +353,15 @@ async function ring(key, info) {
   chrome.notifications.create(notifId, {
     type: 'basic', iconUrl: 'icon128.png', requireInteraction: true, priority: 2,
     title: `${info.who} joined`, message: info.title,
-    buttons: [{ title: 'Join' }, { title: 'Dismiss' }]
+    buttons: [{ title: 'Join' }, { title: `Remind in ${s.snoozeMin} min` }]
   });
 
   ringing[key] = { ...info, at: Date.now(), ringSec: s.ringSec, windowId: win.id, notifId };
   await set({ ringing });
 }
 
-async function finishRing(key, join) {
+async function finishRing(key, action) {
+  const join = action === true || action === 'join';
   chrome.runtime.sendMessage({ target: 'offscreen', type: 'stop' });
   const ringing = await bag('ringing');
   const r = ringing[key];
@@ -304,9 +370,11 @@ async function finishRing(key, join) {
   await set({ ringing });
   chrome.notifications.clear(r.notifId);
   try { await chrome.windows.remove(r.windowId); } catch (e) { /* closed */ }
+  if (action === 'later' && r.code) await snooze(key, r);
   if (join && r.code) {
     const s = await settings();
-    const url = meetUrl(r.code, s.authuser, false);
+    // '#meetringer-join' tells join.js to turn mic and camera off and press Join.
+    const url = meetUrl(r.code, s.authuser, 'join');
     let how = s.joinIn === 'window' ? 'separate window' : 'new tab';
     if (s.joinIn === 'helper') {
       const res = await helper({ url, launcher: s.launcher });
@@ -342,7 +410,10 @@ chrome.runtime.onStartup.addListener(() => chrome.alarms.create('tick', { period
 chrome.alarms.onAlarm.addListener(a => { if (a.name === 'tick') tick(); });
 
 chrome.notifications.onButtonClicked.addListener((id, idx) => {
-  if (id.startsWith('mr:')) finishRing(id.slice(3), idx === 0);
+  if (id.startsWith('mr:')) finishRing(id.slice(3), idx === 0 ? 'join' : 'later');
+});
+chrome.notifications.onClosed.addListener((id, byUser) => {
+  if (byUser && id.startsWith('mr:')) finishRing(id.slice(3), 'dismiss');
 });
 chrome.notifications.onClicked.addListener(id => { if (id.startsWith('mr:')) finishRing(id.slice(3), true); });
 
@@ -358,13 +429,24 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   for (const [key, w] of Object.entries(watches)) {
     if (w.tabId === tabId) { delete watches[key]; await set({ watches }); await markDone(key); await log(`Watch tab closed: ${w.title}`); }
   }
+  const ownTabs = await bag('ownTabs');
+  if (ownTabs[tabId]) {
+    const code = ownTabs[tabId];
+    delete ownTabs[tabId]; await set({ ownTabs });
+    await meetingLeft(code);
+  }
 });
 
 // If the user opens the same meeting themselves, stop watching it.
 chrome.tabs.onUpdated.addListener(async (tabId, change) => {
   if (!change.url || change.url.includes('meetringer-watch')) return;
   const m = change.url.match(MEET_CODE_RE);
-  if (!m) return;
+  const ownTabs = await bag('ownTabs');
+  if (!m) {
+    if (ownTabs[tabId]) { const code = ownTabs[tabId]; delete ownTabs[tabId]; await set({ ownTabs }); await meetingLeft(code); }
+    return;
+  }
+  ownTabs[tabId] = m[1].toLowerCase(); await set({ ownTabs });
   const watches = await bag('watches');
   for (const [key, w] of Object.entries(watches)) {
     if (w.code === m[1].toLowerCase() && w.tabId !== tabId) await stopWatch(key, true, 'you opened the meeting yourself');
@@ -383,9 +465,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case 'feedText': await feedArrived(tabId, msg.text || ''); return {};
       case 'amIWatch': {
         const watches = await bag('watches');
-        const watch = Object.values(watches).some(w => w.tabId === tabId);
+        const w = Object.values(watches).find(x => x.tabId === tabId);
+        const watch = !!w;
         if (watch || msg.last) await log(`Meet page ${watch ? 'attached as watch tab' : 'is not a watch tab'} (tab ${tabId}, ${msg.visibility})`);
-        return { watch };
+        return { watch, armed: !w || !w.armOnEmpty || w.sawEmpty };
       }
       case 'presence': {
         const watches = await bag('watches');
@@ -393,7 +476,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!entry) return {};
         const [key, w] = entry;
         await log(`Detected: "${msg.line}"`);
-        await ring(key, { who: msg.who, title: w.title, code: w.code });
+        await ring(key, { who: msg.who, title: w.title, code: w.code, end: w.end });
         await stopWatch(key, true, 'someone joined');
         return {};
       }
@@ -401,14 +484,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await set({ lastSnapshot: { text: msg.text, at: Date.now() } });
         await log(`Page text (tab ${tabId}): ${msg.text.slice(0, 300)}`);
         return {};
-      case 'join': await finishRing(msg.key, true); return {};
-      case 'joinedByLink': await log('Joined via link (opens in the Meet app if it captures Meet links)'); await finishRing(msg.key, false); return {};
-      case 'dismiss': await finishRing(msg.key, false); return {};
-      case 'refresh': await set({ fetchedAt: 0 }); await refreshCalendar(true); await tick(); return {};
-      case 'saveSettings':
-        await set({ settings: { ...(await settings()), ...msg.settings }, fetchedAt: 0 });
-        await refreshCalendar(true); await tick();
+      case 'join': await finishRing(msg.key, 'join'); return {};
+      case 'dismiss': await finishRing(msg.key, 'dismiss'); return {};
+      case 'later': await finishRing(msg.key, 'later'); return {};
+      case 'rewatch': await rewatch(msg.key, { reason: 'rewatch from popup' }); return {};
+      case 'empty': {
+        const watches = await bag('watches');
+        const entry = Object.entries(watches).find(([, w]) => w.tabId === tabId);
+        if (entry) { entry[1].sawEmpty = true; await set({ watches }); await log(`Room is empty: ${entry[1].title}; will ring when someone joins`); }
         return {};
+      }
+      case 'selfInCall': {
+        const watches = await bag('watches');
+        const entry = Object.entries(watches).find(([, w]) => w.tabId === tabId);
+        if (entry) await stopWatch(entry[0], true, 'you are already in the call');
+        return {};
+      }
+      case 'leftMeeting': if (msg.code) await meetingLeft(msg.code); return {};
+      case 'rejoinedMeeting': {
+        const watches = await bag('watches');
+        for (const [key, w] of Object.entries(watches)) if (w.code === msg.code) await stopWatch(key, true, 'you rejoined the meeting');
+        return {};
+      }
+      case 'refresh': await set({ fetchedAt: 0 }); await refreshCalendar(true); await tick(); return {};
+      case 'saveSettings': {
+        const before = await settings();
+        const after = { ...before, ...msg.settings };
+        await set({ settings: after });
+        if (after.icalUrl !== before.icalUrl) { await set({ fetchedAt: 0 }); await refreshCalendar(true); }
+        await tick();
+        return {};
+      }
       case 'watchCurrent': {
         const m = (msg.url || '').match(MEET_CODE_RE);
         if (!m) return { error: 'This is not a Meet link.' };
@@ -418,6 +524,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       case 'stopWatch': await stopWatch(msg.key, true, 'stopped by hand'); return {};
       case 'checkHelper': return helper({ ping: true });
+      case 'joinLog': await log(msg.text || ''); return {};
       case 'clearLog': await set({ log: [] }); return {};
       case 'testRing':
         await ring(`test:${Date.now()}`, { who: 'Test Person', title: 'Test meeting', code: null });

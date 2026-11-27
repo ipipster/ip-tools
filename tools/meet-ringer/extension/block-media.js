@@ -51,14 +51,6 @@
     const t = performance.now();
     for (const cb of cbs) { try { cb(t); } catch (e) { setTimeout(() => { throw e; }); } }
   };
-  // A worker's timer keeps running at full speed in background tabs; fall back to a page timer.
-  let ticking = false;
-  try {
-    const src = 'setInterval(() => postMessage(0), 250);';
-    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
-    const w = new Worker(url);
-    w.onmessage = flush;
-    ticking = true;
-  } catch (e) { /* blocked by the page's security policy */ }
-  if (!ticking) setInterval(flush, 250);
+  // Meet's Trusted Types policy blocks blob workers, so a page timer is the only option here.
+  setInterval(flush, 250);
 })();

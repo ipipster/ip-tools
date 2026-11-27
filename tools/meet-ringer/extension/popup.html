@@ -1,85 +1,184 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <style>
-  :root { --bg:#FFFFFF; --ink:#16282D; --soft:#5E7379; --line:#DCE6E8; --brand:#0F3A45; --signal:#FFC83D; --err:#B3261E; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#14262B; --ink:#EAF2F3; --soft:#9DB3B8; --line:#2A4248; --brand:#7FC6D6; --err:#FF8A80; } }
+  :root {
+    --bg-top:#303054; --bg-mid:#1C1C33; --bg-bottom:#151728;
+    --card:#2A294C; --card-hi:#343358; --card-edge:rgba(90,92,118,.55); --sep:rgba(90,92,118,.35);
+    --ink:#F8FAFF; --soft:#A3A4C2; --faint:#6F7091;
+    --violet:#8F84D9; --violet-deep:#6E63AF; --violet-glow:rgba(143,132,217,.35); --lilac:#B4ACF5;
+    --green:#71D08B; --amber:#E8C468; --field:#1E1D38;
+  }
   * { box-sizing:border-box; }
-  body { margin:0; width:360px; background:var(--bg); color:var(--ink);
-    font:13px/1.45 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif; }
-  header { padding:14px 16px 10px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); }
-  header img { width:26px; height:26px; }
-  header h1 { font-size:15px; margin:0; }
-  section { padding:12px 16px; border-bottom:1px solid var(--line); }
-  h2 { font-size:13px; margin:0 0 6px; color:var(--brand); }
-  .status { color:var(--soft); }
-  .err { color:var(--err); }
+  html { background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-mid) 38%,var(--bg-bottom) 100%); min-height:100%; }
+  body { margin:0; width:380px; color:var(--ink); padding:0 14px 16px;
+    font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Helvetica Neue",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:center; gap:10px; padding:16px 2px 6px; }
+  header .logo { width:30px; height:30px; border-radius:50%; display:grid; place-items:center;
+    background:radial-gradient(circle at 35% 30%,var(--lilac),var(--violet-deep)); box-shadow:0 0 0 4px rgba(143,132,217,.14), 0 4px 14px var(--violet-glow); }
+  header .logo img { width:18px; height:18px; }
+  header h1 { font-size:15px; font-weight:650; margin:0; letter-spacing:-.1px; }
+  header .sub { font-size:11px; color:var(--soft); }
+
+  h2 { font-size:11px; font-weight:600; color:var(--faint); margin:16px 4px 7px; text-transform:uppercase; letter-spacing:.6px; }
+  .glass { position:relative; background:linear-gradient(180deg,var(--card-hi),var(--card)); border-radius:14px; overflow:hidden;
+    border:1px solid var(--card-edge); box-shadow:0 8px 22px rgba(8,8,24,.35), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+  .glass > * + * { border-top:1px solid var(--sep); }
+
+  .row { display:flex; align-items:center; gap:11px; min-height:42px; padding:8px 12px; }
+  .row .lbl { flex:1; }
+  .stack { padding:10px 12px; }
+  .stack .head { display:flex; align-items:center; gap:11px; margin-bottom:8px; }
+  .stack .head .lbl { flex:1; }
+  .hint { font-size:11px; color:var(--faint); margin-top:6px; }
+
+  .ic { width:28px; height:28px; border-radius:8px; flex:none; display:grid; place-items:center; color:#FFFFFF;
+    background:linear-gradient(160deg,#A79CF0,#6E63AF); box-shadow:0 3px 10px rgba(110,99,175,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+  .ic svg { width:16px; height:16px; fill:currentColor; }
+  .ic.amber { color:#2B2108; background:linear-gradient(160deg,#F5D98A,#D9A83A); box-shadow:0 3px 10px rgba(232,196,104,.35), inset 0 1px 0 rgba(255,255,255,.45); }
+  .ic.green { color:#0B2A15; background:linear-gradient(160deg,#9BE8B0,#4DB86E); box-shadow:0 3px 10px rgba(113,208,139,.35), inset 0 1px 0 rgba(255,255,255,.45); }
+  .ic.gray { color:#FFFFFF; background:linear-gradient(160deg,#8A8BB0,#55567A); box-shadow:0 3px 10px rgba(20,20,45,.45), inset 0 1px 0 rgba(255,255,255,.25); }
+  .row .lbl, .stack .lbl { color:var(--ink); font-weight:500; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+
   ul { list-style:none; padding:0; margin:0; }
-  li { display:flex; justify-content:space-between; gap:8px; padding:3px 0; }
-  li span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  li .t { color:var(--soft); flex:none; }
-  label { display:block; margin:6px 0 2px; color:var(--soft); }
-  input, select { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:transparent; color:inherit; font:inherit; }
-  .row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
-  .buttons { display:flex; gap:8px; flex-wrap:wrap; }
-  button { border:1px solid var(--line); background:transparent; color:inherit; border-radius:6px; padding:6px 10px; font:inherit; cursor:pointer; }
-  button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
-  @media (prefers-color-scheme: dark) { button.primary { color:#0E2328; } }
-  button:disabled { opacity:.45; cursor:default; }
-  button:focus-visible, input:focus-visible { outline:2px solid var(--signal); outline-offset:1px; }
-  button.x { padding:0 6px; border:0; color:var(--soft); }
-  details summary { cursor:pointer; color:var(--soft); }
-  pre { white-space:pre-wrap; word-break:break-word; font-size:11px; margin:6px 0 0; color:var(--soft); }
+  li { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:42px; padding:8px 12px; }
+  ul > li + li { border-top:1px solid var(--sep); }
+  li span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:550; }
+  li .t { color:var(--soft); flex:none; display:flex; align-items:center; gap:7px; font-variant-numeric:tabular-nums; }
+  li.status { color:var(--soft); font-weight:400; }
+  .tag { font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; background:rgba(163,164,194,.12); color:var(--soft);
+    border:1px solid rgba(163,164,194,.18); }
+  .tag.on { background:transparent; border-color:transparent; color:var(--green); padding:2px 0; }
+  .tag.warn { background:rgba(232,196,104,.10); color:var(--amber); border-color:rgba(232,196,104,.28); }
+  #calStatus { margin:8px 4px 0; font-size:11px; color:var(--faint); }
+  #calStatus.err { color:var(--amber); }
+
+  input, select { font:inherit; color:var(--ink); background:var(--field); border:1px solid var(--card-edge);
+    border-radius:9px; padding:4px 10px; height:30px; outline:none; }
+  input::placeholder { color:var(--faint); }
+  input:focus-visible, select:focus-visible { border-color:var(--violet); box-shadow:0 0 0 3px var(--violet-glow); }
+  #icalUrl, #authuser, #ringtone, #joinIn, #launcher { width:100%; }
+  input[type=number] { width:64px; text-align:right; font-variant-numeric:tabular-nums; }
+  select option { color:var(--ink); background:var(--field); }
+
+  .switch { position:relative; width:42px; height:25px; flex:none; }
+  .switch input { opacity:0; width:100%; height:100%; margin:0; position:absolute; cursor:pointer; z-index:1; }
+  .switch span { position:absolute; inset:0; border-radius:13px; background:#3A3960; border:1px solid var(--card-edge); transition:background .18s; }
+  .switch span::after { content:""; position:absolute; top:2px; left:2px; width:19px; height:19px; border-radius:50%;
+    background:var(--ink); box-shadow:0 2px 4px rgba(0,0,0,.35); transition:transform .18s; }
+  .switch input:checked + span { background:linear-gradient(180deg,var(--violet),var(--violet-deep)); box-shadow:0 0 12px var(--violet-glow); }
+  .switch input:checked + span::after { transform:translateX(17px); }
+  .switch input:focus-visible + span { box-shadow:0 0 0 3px var(--violet-glow); }
+
+  button { font:inherit; font-weight:550; color:var(--ink); border-radius:10px; padding:0 14px; height:32px; cursor:pointer;
+    background:rgba(255,255,255,.04); border:1px solid var(--card-edge); transition:background .12s, transform .1s; }
+  button:hover { background:rgba(255,255,255,.08); }
+  button:active { transform:scale(.97); }
+  button:focus-visible { outline:none; box-shadow:0 0 0 3px var(--violet-glow); }
+  button.primary { border-color:rgba(180,172,245,.45);
+    background:radial-gradient(120% 140% at 50% 0%,var(--lilac) 0%,var(--violet) 40%,var(--violet-deep) 100%);
+    box-shadow:0 6px 18px var(--violet-glow), inset 0 1px 0 rgba(255,255,255,.25); }
+  button.primary:hover { filter:brightness(1.06); }
+  button:disabled { opacity:.4; cursor:default; transform:none; filter:none; }
+  button.mini { height:24px; padding:0 10px; font-size:11px; border-radius:8px; }
+  button.icon { width:28px; padding:0; display:inline-grid; place-items:center; }
+  button.icon svg { width:15px; height:15px; fill:currentColor; }
+  button.x { border:0; background:transparent; color:var(--faint); padding:0 6px; height:22px; }
+  button.x:hover { color:var(--ink); background:transparent; }
+  .actions { display:flex; gap:8px; padding:10px 12px; }
+  .actions button { flex:1; }
+  .buttons { display:flex; gap:8px; justify-content:flex-end; padding:14px 0 0; }
+
+  details summary { cursor:pointer; color:var(--faint); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; margin:18px 4px 7px; }
+  pre { white-space:pre-wrap; word-break:break-word; font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+    margin:0; padding:10px 12px; color:var(--soft); max-height:180px; overflow:auto; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
 </style></head>
 <body>
-<header><img src="icon128.png" alt=""><h1>Meet Ringer</h1></header>
+<header>
+  <div class="logo"><img src="icon128.png" alt=""></div>
+  <div><h1>Meet Ringer</h1><div class="sub">Rings when someone joins your Meet <span id="version"></span></div></div>
+</header>
 
-<section>
-  <h2>Watching now</h2>
+<h2>Watching now</h2>
+<div class="glass">
   <ul id="watches"></ul>
-  <div class="buttons" style="margin-top:8px">
+  <div class="actions">
     <button id="watchCurrent" class="primary">Watch this meeting</button>
     <button id="test">Test ring</button>
   </div>
-</section>
+</div>
 
-<section>
-  <h2>Upcoming Meet meetings</h2>
-  <ul id="events"></ul>
-  <p id="calStatus" class="status"></p>
-</section>
+<h2>Upcoming Meet meetings</h2>
+<div class="glass"><ul id="events"></ul></div>
+<p id="calStatus"></p>
 
-<section>
-  <h2>Settings</h2>
-  <label for="icalUrl">Calendar feed URL (Apps Script web app or secret iCal address)</label>
-  <input id="icalUrl" placeholder="https://script.google.com/macros/s/.../exec?token=...">
-  <div class="row">
-    <div><label for="leadMin">Start before (min)</label><input id="leadMin" type="number" min="0" max="60"></div>
-    <div><label for="lateMin">Keep after (min)</label><input id="lateMin" type="number" min="1" max="120"></div>
-    <div><label for="ringSec">Ring (sec)</label><input id="ringSec" type="number" min="5" max="120"></div>
+<h2>Ringing</h2>
+<div class="glass">
+  <div class="stack">
+    <div class="head"><span class="ic amber"><svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg></span><label class="lbl" for="ringtone">Ringtone</label><button id="openSounds" class="mini icon" title="Extension details: under Source, click the &quot;Loaded from&quot; path to open the folder (sounds is inside)" aria-label="Extension details"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></button><button id="refreshSounds" class="mini icon" title="Read the sounds folder again" aria-label="Refresh sounds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button><button id="preview" class="mini icon" title="Preview" aria-label="Preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button></div>
+    <select id="ringtone"></select>
+    <div id="soundsStatus" class="hint"></div>
+    <div id="customBox" class="hint">
+      <div id="customStatus"></div>
+      <button id="chooseSound" class="mini" style="margin-top:8px">Choose file...</button>
+    </div>
   </div>
-  <label for="joinIn">Join opens the meeting in</label>
-  <select id="joinIn">
-    <option value="tab">A new tab (or the Meet app, if it captures Meet links)</option>
-    <option value="helper">The installed Meet app (Windows helper needed)</option>
-    <option value="window">A separate window</option>
-  </select>
-  <div id="helperBox">
-    <label for="launcher">Meet app shortcut target (right-click the Meet app shortcut > Properties > Target)</label>
+  <div class="row"><span class="ic amber"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6 3.2 1.9-.8 1.3L11 13.2V7h2v5.6z"/></svg></span><label class="lbl" for="ringSec">Ring for (sec)</label><input id="ringSec" type="number" min="5" max="120"></div>
+  <div class="row"><span class="ic amber"><svg viewBox="0 0 24 24"><path d="M12.3 2a10 10 0 1 0 9.6 12.9A8 8 0 0 1 12.3 2z"/></svg></span><label class="lbl" for="snoozeMin">Snooze (min)</label><input id="snoozeMin" type="number" min="1" max="60"></div>
+</div>
+
+<h2>Watching</h2>
+<div class="glass">
+  <div class="row"><span class="ic"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11z"/></svg></span><label class="lbl" for="leadMin">Start before meeting (min)</label><input id="leadMin" type="number" min="0" max="60"></div>
+  <div class="row"><span class="ic"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.1 5l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2.1V8H12z"/></svg></span><label class="lbl" for="lateMin">Keep after start (min)</label><input id="lateMin" type="number" min="1" max="120"></div>
+  <div class="row"><span class="ic green"><svg viewBox="0 0 24 24"><path d="M12 5C7 5 2.7 8.1 1 12.5 2.7 16.9 7 20 12 20s9.3-3.1 11-7.5C21.3 8.1 17 5 12 5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span><label class="lbl" for="keepWatching">Keep watching after I leave</label>
+    <label class="switch"><input id="keepWatching" type="checkbox"><span></span></label></div>
+</div>
+
+<h2>Account</h2>
+<div class="glass">
+  <div class="stack">
+    <div class="head"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12zM8 13h8v-2H8v2zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10z"/></svg></span><label class="lbl" for="icalUrl">Calendar feed URL</label></div>
+    <input id="icalUrl" placeholder="https://script.google.com/macros/s/.../exec?token=...">
+  </div>
+  <div class="stack">
+    <div class="head"><span class="ic green"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/></svg></span><label class="lbl" for="authuser">Google account</label></div>
+    <input id="authuser" placeholder="you@company.com or account index">
+    <div class="hint">Needed when several Google accounts are signed in to Chrome.</div>
+  </div>
+</div>
+
+<h2>Joining</h2>
+<div class="glass">
+  <div class="stack">
+    <div class="head"><span class="ic green"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg></span><label class="lbl" for="joinIn">Join opens the meeting in</label></div>
+    <select id="joinIn">
+      <option value="tab">A new browser tab</option>
+      <option value="helper">The installed Meet app (Windows helper needed)</option>
+      <option value="window">A separate window</option>
+    </select>
+  </div>
+  <div class="stack" id="helperBox">
+    <div class="head"><span class="ic gray"><svg viewBox="0 0 24 24"><path d="M3 5h18v12H3zM8 19h8v2H8z"/></svg></span><label class="lbl" for="launcher">Meet app shortcut target</label><button id="checkHelper" class="mini">Check helper</button></div>
     <input id="launcher" placeholder='"C:\...\chrome_proxy.exe" --profile-directory=Default --app-id=...'>
-    <div class="buttons" style="margin-top:6px"><button id="checkHelper">Check helper</button><span id="helperStatus" class="status"></span></div>
+    <div class="hint">Right-click the Meet app shortcut &gt; Properties &gt; copy the whole Target. <span id="helperStatus"></span></div>
   </div>
-  <label for="authuser">Google account index (authuser, only if you use several accounts)</label>
-  <input id="authuser" placeholder="optional">
-  <div class="buttons" style="margin-top:10px">
-    <button id="save" class="primary">Save</button>
-    <button id="refresh">Refresh calendar</button>
-  </div>
-</section>
+</div>
+<div class="buttons">
+  <button id="refresh">Refresh calendar</button>
+  <button id="save" class="primary">Save</button>
+</div>
 
-<section>
-  <details><summary>Diagnostics log</summary>
-    <div class="buttons" style="margin-top:6px"><button id="copyLog">Copy log</button><button id="clearLog">Clear</button></div>
-    <pre id="log">No data yet.</pre></details>
-</section>
+<details><summary>Diagnostics log</summary>
+  <div class="glass">
+    <div class="actions"><button id="copyLog">Copy log</button><button id="clearLog">Clear</button></div>
+    <pre id="log">No data yet.</pre>
+  </div>
+</details>
+<script src="tones.js"></script>
 <script src="popup.js"></script>
 </body></html>

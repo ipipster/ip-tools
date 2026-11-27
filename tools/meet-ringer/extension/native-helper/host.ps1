@@ -17,7 +17,7 @@ try {
   if ($msg.ping) { Reply @{ ok = $true; version = '1' }; exit }
 
   $url = [string]$msg.url
-  if ($url -notmatch '^https://meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}(\?authuser=\d+)?$') { Reply @{ ok = $false; error = 'invalid meeting URL' }; exit }
+  if ($url -notmatch '^https://meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}(\?authuser=[A-Za-z0-9%._+-]+)?(#meetringer-join)?$') { Reply @{ ok = $false; error = 'invalid meeting URL' }; exit }
   $cmd = [string]$msg.launcher
   if ($cmd -notmatch '^\s*"([^"]+)"(.*)$') { Reply @{ ok = $false; error = 'the shortcut target must start with a quoted program path' }; exit }
   $exe = $Matches[1]; $rest = $Matches[2]

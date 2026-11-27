@@ -2,14 +2,28 @@
 // Reads the JSON the calendar feed returned and hands it to the background.
 chrome.runtime.sendMessage({ type: 'amIFeed' }, (res) => {
   if (chrome.runtime.lastError || !res || !res.feed) return;
+  const started = Date.now();
   let sent = false;
-  const send = () => {
-    if (sent || !document.body) return;
-    const text = (document.body.innerText || '').trim();
-    if (!text) return;
-    sent = true;
-    chrome.runtime.sendMessage({ type: 'feedText', text });
+
+  // JSON viewer extensions can wrap the page in their own toolbar, so fall back to the outermost {...}.
+  const extract = (text) => {
+    try { JSON.parse(text); return text; } catch (e) { /* not plain JSON */ }
+    const a = text.indexOf('{'), b = text.lastIndexOf('}');
+    if (a < 0 || b <= a) return null;
+    const inner = text.slice(a, b + 1);
+    try { JSON.parse(inner); return inner; } catch (e) { return null; }
   };
-  send();
-  if (!sent) setTimeout(send, 1500);
+
+  const attempt = () => {
+    if (sent) return;
+    const raw = (document.querySelector('pre') || document.body || {}).innerText || '';
+    const json = extract(raw.trim());
+    if (json || Date.now() - started > 6000) {
+      sent = true;
+      chrome.runtime.sendMessage({ type: 'feedText', text: json || raw.trim() });
+      return;
+    }
+    setTimeout(attempt, 500);
+  };
+  attempt();
 });
