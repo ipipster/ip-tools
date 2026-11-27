@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Meet Ringer - choose your own sound</title>
+<style>
+  :root { color-scheme: dark; --bg:#14142B; --ink:#EDEDF7; --soft:#A3A4C2; --edge:rgba(255,255,255,.12); --violet:#8E85F0; }
+  body { margin:0; padding:22px; background:var(--bg); color:var(--ink); font:14px/1.45 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif; }
+  h1 { font-size:16px; margin:0 0 6px; }
+  p { color:var(--soft); margin:0 0 14px; }
+  input[type=file] { width:100%; padding:10px; border:1px dashed var(--edge); border-radius:10px; color:var(--ink); background:rgba(255,255,255,.04); box-sizing:border-box; }
+  #status { margin-top:12px; min-height:20px; }
+  .err { color:#F2B880; }
+</style></head>
+<body>
+  <h1>Choose your own ringtone</h1>
+  <p>Any wav, mp3, m4a or ogg file up to 3 MB. On Windows, C:\Windows\Media has ringtones such as Ring05.wav.</p>
+  <input id="file" type="file" accept="audio/*">
+  <div id="status"></div>
+<script src="choose-sound.js"></script>
+</body></html>

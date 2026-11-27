@@ -12,6 +12,9 @@ secrets/
 *.p12
 *.pfx
 
+# Meet Ringer ringtones copied from your own Mac by add-sounds-mac.sh (Apple, Microsoft, Slack own them)
+tools/meet-ringer/extension/sounds/
+
 # Build output (release zips are attached to GitHub Releases, not committed)
 dist/
 *.zip

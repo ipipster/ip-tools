@@ -1,32 +1,54 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Meet Ringer</title>
 <style>
-  :root { --bg:#0F3A45; --ink:#FFFFFF; --soft:#B9D3D9; --signal:#FFC83D; --join:#1E9E5A; --dismiss:#5B6F75; }
+  :root { --bg:#ECECEE; --card:#F6F6F7; --ink:#1D1D1F; --soft:#6E6E73; --line:rgba(0,0,0,.08);
+    --avatar1:#5E9CFF; --avatar2:#2F6BEA; --join:#30C552; --decline:#FF3B30; --focus:#0A84FF; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1C1C1E; --card:#2C2C2E; --ink:#ECECEC; --soft:#A1A1A6;
+    --line:rgba(255,255,255,.08); --join:#32D74B; --decline:#FF453A; } }
   * { box-sizing:border-box; }
-  body { margin:0; height:100vh; background:var(--bg); color:var(--ink);
-    font:15px/1.4 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;
-    display:grid; grid-template-rows:1fr auto; padding:18px 20px 16px; }
-  .head { display:flex; gap:14px; align-items:center; }
-  .bell { width:46px; height:46px; border-radius:50%; background:var(--signal); flex:none;
-    display:grid; place-items:center; font-size:24px; }
-  .ringing .bell { animation:pulse 1s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,200,61,.7);} 50% { box-shadow:0 0 0 12px rgba(255,200,61,0);} }
-  @media (prefers-reduced-motion: reduce) { .ringing .bell { animation:none; } }
-  h1 { font-size:18px; margin:0; font-weight:650; }
-  p { margin:2px 0 0; color:var(--soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:270px; }
-  .actions { display:flex; gap:10px; }
-  button { flex:1; border:0; border-radius:8px; padding:11px; font:inherit; font-weight:600; color:#fff; cursor:pointer; }
-  button:focus-visible { outline:3px solid var(--signal); outline-offset:2px; }
-  #join { background:var(--join); } #dismiss { background:var(--dismiss); }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:10px;
+    font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; user-select:none; }
+  .card { height:100%; background:var(--card); border:1px solid var(--line); border-radius:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); padding:14px 16px; display:flex; align-items:center; gap:14px; }
+  .avatar { position:relative; width:48px; height:48px; border-radius:50%; flex:none;
+    background:linear-gradient(180deg,var(--avatar1),var(--avatar2)); color:#fff;
+    display:grid; place-items:center; font-size:18px; font-weight:600; letter-spacing:.3px; }
+  .avatar img { position:absolute; right:-3px; bottom:-3px; width:20px; height:20px; border-radius:5px;
+    background:var(--card); padding:2px; }
+  .ringing .avatar::after { content:""; position:absolute; inset:-4px; border-radius:50%;
+    border:2px solid var(--join); animation:ring 1.4s ease-out infinite; }
+  @keyframes ring { 0% { transform:scale(.92); opacity:.9; } 100% { transform:scale(1.25); opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .ringing .avatar::after { animation:none; opacity:0; } }
+  .text { flex:1; min-width:0; }
+  .app { font-size:11px; color:var(--soft); text-transform:uppercase; letter-spacing:.4px; margin-bottom:1px; }
+  h1 { font-size:14px; font-weight:600; margin:0; }
+  p { margin:1px 0 0; color:var(--soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .actions { display:flex; gap:14px; flex:none; }
+  .act { display:flex; flex-direction:column; align-items:center; gap:4px; font-size:11px; color:var(--soft); }
+  button { width:40px; height:40px; border:0; border-radius:50%; cursor:pointer; color:#fff;
+    display:grid; place-items:center; transition:filter .12s, transform .12s; }
+  button:hover { filter:brightness(1.08); } button:active { transform:scale(.94); }
+  button:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+  #join { background:var(--join); } #dismiss { background:var(--decline); } #later { background:#8E8E93; }
+  svg { width:20px; height:20px; fill:currentColor; }
+  #dismiss svg { transform:rotate(135deg); }
 </style></head>
 <body class="ringing">
-  <div class="head">
-    <div class="bell" aria-hidden="true">🔔</div>
-    <div><h1 id="who"></h1><p id="title"></p><p id="when"></p></div>
-  </div>
-  <div class="actions">
-    <button id="join">Join</button>
-    <button id="dismiss">Dismiss</button>
+  <div class="card">
+    <div class="avatar" aria-hidden="true"><span id="initials">?</span><img src="icon128.png" alt=""></div>
+    <div class="text">
+      <div class="app">Google Meet</div>
+      <h1 id="who"></h1>
+      <p id="title"></p>
+      <p id="when"></p>
+    </div>
+    <div class="actions">
+      <div class="act"><button id="dismiss" aria-label="Decline"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg></button>Decline</div>
+      <div class="act"><button id="later" aria-label="Remind me later"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6 3.2 1.9-.8 1.3L11 13.2V7h2v5.6z"/></svg></button><span id="laterLabel">Later</span></div>
+      <div class="act"><button id="join" aria-label="Join"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg></button>Join</div>
+    </div>
   </div>
 <script src="ring.js"></script>
 </body></html>

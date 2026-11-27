@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meet Ringer",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Rings when someone joins your Google Meet meeting, before you join.",
   "permissions": [
     "alarms",
@@ -46,6 +46,15 @@
       ],
       "js": [
         "content.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "join.js"
       ],
       "run_at": "document_start"
     },
