@@ -1,6 +1,6 @@
 # Meet Ringer - full guide
 
-Teams-style ringing for Google Meet. This is the complete guide: background, setup, daily use, internals and design decisions. For the short version see the [README](../README.md).
+Teams-style ringing for Google Meet (version 1.2.0). This is the complete guide: background, setup, daily use, internals and design decisions. For the short version see the [README](../README.md).
 
 - [Overview](#overview)
 - [Get started](#get-started)
@@ -17,7 +17,7 @@ Teams-style ringing for Google Meet. This is the complete guide: background, set
 
 Google Meet does not ring when someone starts or joins a scheduled meeting. It only shows a short calendar notification with a single quiet sound, and the notification disappears after a few seconds. Microsoft Teams, in contrast, rings until you join or decline.
 
-The goal: when someone joins one of your Meet meetings before you do, ring for about 30 seconds, show who joined, and keep a message on screen with **Join** and **Dismiss** buttons until you click one of them.
+The goal: when someone joins one of your Meet meetings before you do, ring for about 30 seconds, show who joined, and keep a message on screen with **Join** and **Decline** buttons until you click one of them.
 
 ### Solution
 
@@ -25,8 +25,10 @@ Meet Ringer is a Chrome extension (Manifest V3) that watches the Meet pre-join s
 
 - **Calendar-driven:** a few minutes before each meeting with a Meet link, the extension opens the meeting's pre-join screen in a pinned, muted background tab. It never joins the meeting.
 - **Camera and mic stay off:** the background tab blocks camera and microphone access, so the camera light never turns on.
-- **Ring:** when the pre-join screen shows someone inside, a two-tone ring plays for 30 seconds, a call window opens in the bottom-right corner, and a system notification appears. Both show who joined and offer Join and Dismiss.
-- **Persistent message:** after the ring stops, the window stays on screen until Join or Dismiss is clicked.
+- **Ring:** when the pre-join screen shows someone inside, the chosen ringtone plays for 30 seconds, a call window opens in the bottom-right corner, and a system notification appears. Both show who joined. The call window offers **Decline**, **Later** and **Join**; the notification offers **Join** and **Remind in N min**.
+- **Persistent message:** after the ring stops, the window stays on screen until one of its buttons is clicked.
+- **Join for you:** Join opens the meeting, turns microphone and camera off, checks both are off, then presses *Join now* / *Ask to join*.
+- **Second chances:** **Later** watches the meeting again after a snooze; **Rewatch** in the popup watches a handled meeting again; optionally the meeting is watched again when you leave it early.
 - **Manual mode:** any open Meet link can be watched with one click, without calendar access.
 
 Calendar data comes from a small Google Apps Script web app that runs under your own Google account (see [why](#alternatives-considered)).
@@ -40,7 +42,7 @@ Three one-time steps (about 15 minutes), then daily use.
 ### Before you start
 
 - Google Chrome or Brave.
-- The browser signed in to the Google account whose calendar you want to watch.
+- The browser signed in to the Google account whose calendar you want to watch. If more than one Google account is signed in (for example a personal Gmail first), you will enter the work email in the popup in Step 2.
 - Browser policy that allows Developer mode (needed to load the extension).
 - A colleague for two minutes, for the join test.
 
@@ -76,7 +78,8 @@ To check the feed, open the URL in the browser: it should return `{"events":[...
 3. Click **Load unpacked** and select the `meet-ringer` folder (the one that directly contains `manifest.json`).
 4. Pin the extension to the toolbar. The yellow bell icon means it is loaded.
 5. Open the popup, paste the Calendar feed URL, and click **Save**. Upcoming meetings appear under *Upcoming Meet meetings*.
-6. Click **Test ring** to check the sound, the call window and the notification.
+6. **If more than one Google account is signed in to the browser**, enter your work email in **Google account** and click **Save**. Otherwise the watch tab opens Meet as an outside guest, Meet does not show guests who is already in the call, and nothing rings.
+7. Optional: pick a ringtone (see [Ringtones](#ringtones)). Click **Test ring** to check the sound, the call window and the notification.
 
 **To update:** unzip the new version over the same folder and click the reload button on Meet Ringer in `chrome://extensions`. Settings are kept.
 
@@ -87,8 +90,8 @@ Two checks confirm the installation in about 5 minutes. A meeting you join yours
 **1. Ring, window and notification**
 
 1. Open the extension popup and click **Test ring**.
-2. Expected: a two-tone ring for 30 seconds, a call window in the bottom-right corner showing "Test Person joined", and a system notification with Join and Dismiss.
-3. Click **Dismiss**: the ring stops and the window closes.
+2. Expected: the chosen ringtone (default: Classic two-tone beep) for 30 seconds, a call window in the bottom-right corner showing "Test Person joined" with Decline, Later and Join, and a system notification with Join and Remind in N min.
+3. Click **Decline**: the ring stops and the window closes.
 
 **2. Join detection**
 
@@ -96,7 +99,7 @@ Two checks confirm the installation in about 5 minutes. A meeting you join yours
 2. In the popup, click **Watch this meeting**. The meeting appears under *Watching now* and a pinned, muted Meet tab opens.
 3. Close your own Meet tab (keep the pinned one).
 4. Send the meeting link to a colleague in your organization and ask them to join. External guests wait in the lobby until admitted, so they do not trigger the ring.
-5. Expected: within a few seconds the ring starts and the call window shows the colleague's name. Click **Join** to enter the meeting with camera and mic working.
+5. Expected: within a few seconds the ring starts and the call window shows the colleague's name. Click **Join**: the meeting opens, mic and camera are switched off, and you are joined (or asked to be admitted).
 
 If the colleague is inside but nothing rings, open **Diagnostics log** in the popup, click **Copy log** and check it (see [Troubleshooting](#troubleshooting-and-limitations)).
 
@@ -104,7 +107,9 @@ If the colleague is inside but nothing rings, open **Diagnostics log** in the po
 
 Once the feed is set, nothing needs to be done day to day: keep the browser running and the extension watches every Meet meeting on the calendar.
 
-- **When it rings:** click **Join** to open the meeting, or **Dismiss** to silence it. The ring stops after 30 seconds on its own, but the call window and notification stay until clicked. Clicking the notification body also joins.
+- **When it rings:** **Join** opens the meeting and joins with mic and camera off. If it cannot confirm both are off within 25 seconds, it stays on the pre-join screen. **Later** stops the ring and watches again after the snooze time (default 5 minutes), so it rings again if the person is still waiting. **Decline** silences it; closing the notification also counts as Decline. The ring stops after 30 seconds on its own, but the call window stays until clicked.
+- **Meeting status:** each upcoming meeting shows **Watching**, **Handled** or **Snoozed**. A handled meeting that has not ended yet gets a **Rewatch** button, so a second join is not missed.
+- **Keep watching after I leave** (setting, off by default): if you leave a calendar meeting before its scheduled end, it is watched again and rings only after the room has been empty and someone joins. It stops if you rejoin.
 - **Pinned Meet tabs:** a pinned, muted Meet tab around meeting start is the watch tab. Do not join from it (its camera and mic are blocked); closing it stops watching that meeting. You do not need to switch to it; it reloads itself every 4 minutes.
 - **Watch a meeting by hand:** open the Meet link, click **Watch this meeting** in the popup, then close your own tab. Manual watches last 60 minutes.
 - **Stop watching:** click the x next to the meeting under *Watching now*.
@@ -119,12 +124,15 @@ All settings are in the toolbar popup and are saved in the extension's local sto
 | Calendar feed URL | empty | Apps Script web app URL with `?token=...`, or a secret iCal address where allowed. Empty means manual mode only |
 | Start before (min) | 3 | How many minutes before the start the watch tab opens |
 | Keep after (min) | 15 | How many minutes after the start watching continues |
-| Ring (sec) | 30 | How long the ring plays |
-| Google account index (authuser) | empty | Only needed if several Google accounts are signed in to the same browser profile; 0 is the first account |
+| Ringtone | Classic | Saved as soon as you pick it (no Save needed); see [Ringtones](#ringtones) |
+| Ring for (sec) | 30 | How long the ring plays |
+| Snooze (min) | 5 | How long **Later** / *Remind in N min* waits before watching again |
+| Keep watching after I leave | off | Watch a calendar meeting again when you leave it before its end |
+| Google account | empty | Your work email (or an account index such as `0`) when several Google accounts are signed in to the same browser profile |
 
-**Join opens the meeting in** decides where Join opens the meeting:
+**Join opens the meeting in** decides where Join opens the meeting (in all three cases Join switches mic and camera off and joins for you):
 
-- **A new tab** (default): opens the meeting in a new browser tab with a normal link click. If your browser lets the installed Meet app capture Meet links (an "Open supported links" app setting, not available in Brave), it opens in the app instead.
+- **A new tab** (default): opens the meeting in a new browser tab.
 - **The installed Meet app (Windows helper needed):** opens the meeting in the Google Meet app installed from the browser, even in Brave. It needs the small Windows helper from the package's `native-helper` folder:
   1. Double-click `native-helper\install.bat` (no admin rights needed; it installs to `%LOCALAPPDATA%\MeetRinger` and registers the helper for Chrome, Brave and Edge).
   2. Right-click the Meet app shortcut (taskbar or Start menu) > **Properties**, and copy the whole **Target** field, for example `"C:\Program Files\BraveSoftware\Brave-Browser\Application\chrome_proxy.exe" --profile-directory=Default --app-id=...`.
@@ -132,6 +140,20 @@ All settings are in the toolbar popup and are saved in the extension's local sto
 
   If the helper fails when joining, the meeting opens in a new tab instead and the reason is in the diagnostics log. To remove the helper, run `native-helper\uninstall.bat`.
 - **A separate window:** opens the meeting in its own window without tabs or address bar, much like the app, but grouped with the browser on the taskbar.
+
+### Ringtones
+
+The picker has three groups. Next to it: the cog opens the extension details (under **Source**, click the *Loaded from* path to open the extension folder), the refresh icon reads the sounds folder again, and play / stop previews the tone.
+
+- **Built-in** (Classic, Chime, Old phone bell, Digital): generated by the browser, the same on every computer, no files needed.
+- **Sounds folder**: audio files in the extension's `sounds` folder, listed in `sounds/index.txt`. The popup caches the list; click the refresh icon after adding or removing sounds.
+    - Windows: double-click `add-sounds-windows.bat`. It copies the Windows ringtones (`C:\Windows\Media`: Ring01-Ring10, Alarm01-Alarm10 and others) and, if the Slack desktop app is installed (web installer or Microsoft Store), eight Slack sounds.
+    - Mac: run `./add-sounds-mac.sh`. It copies iPhone, Teams and Slack sounds from your own Mac.
+    - Your own files: drop them into `sounds` and run the loader again; every wav, mp3, m4a or ogg is listed, named after the file.
+    - `sounds` is never committed: the sounds belong to Microsoft, Apple and Slack.
+- **My own sound file...**: choose it, click **Choose file...** and pick one audio file (up to 3 MB) in the small window that opens. Until a file is chosen, the previous ringtone stays in use.
+
+If a chosen sound cannot be played (file removed), the classic beep rings instead.
 
 ## Under the hood
 
@@ -144,7 +166,8 @@ Every 30 seconds the extension checks the calendar and decides which meetings to
 3. In that tab, `block-media.js` runs before Meet's own code and makes camera and microphone requests fail. It also makes the hidden tab report itself as visible and keeps Meet's screen updates running, because browsers pause page rendering in background tabs and the "in this call" text would otherwise only appear when you switch to the tab. The tab is reloaded every 4 minutes so the browser does not slow it down further. It only acts on URLs carrying the `#meetringer-watch` marker.
 4. `content.js` reads the pre-join text on every page change and every 3 seconds, and looks for lines like "X is in this call" or "X and Y are in this call".
 5. On a match, the service worker starts the ring (offscreen audio page), opens the call window, shows a notification, marks the meeting as handled and closes the watch tab.
-6. **Join** opens the meeting in a new, normal tab with working camera and mic. **Dismiss**, or closing the call window, stops the ring and closes the message.
+6. **Join** opens the meeting with the `#meetringer-join` marker (new tab, separate window or Meet app). `join.js` sees the marker, turns mic and camera off, confirms both are off, then presses *Join now* / *Ask to join*. **Later** snoozes and watches again; **Decline**, or closing the call window, stops the ring and closes the message.
+7. With *Keep watching after I leave*, `content.js` in your own meeting tab reports when you leave; the meeting is watched again and rings only after the room was seen empty and someone joins.
 
 Watching also stops when the watch window ends, when the watch tab is closed by hand, or when you open the same meeting yourself in another tab (so it never rings once you are already handling the meeting).
 
@@ -153,13 +176,17 @@ Watching also stops when the watch window ends, when the watch tab is closed by 
 | File | Role |
 |---|---|
 | `manifest.json` | Extension definition: permissions, content scripts, service worker |
-| `background.js` | Service worker: calendar refresh, scheduling, watch tabs, ringing, Join/Dismiss, diagnostics log |
+| `background.js` | Service worker: calendar refresh, scheduling, watch tabs, ringing, Decline / Later / Join, snooze and rewatch, diagnostics log |
 | `lib/ical.js` | [ical.js](https://github.com/kewisch/ical.js) 2.1.0 (Mozilla, MPL-2.0), used only for the iCal feed option |
 | `block-media.js` | Runs in watch tabs before Meet's code: blocks camera and mic, reports the tab as visible and keeps Meet rendering in the background |
-| `content.js` | Reads the pre-join screen and reports who is inside; sends page text to the diagnostics log |
+| `content.js` | Reads the pre-join screen and reports who is inside; in your own meeting tabs reports leaving and rejoining; sends page text to the diagnostics log |
+| `join.js` | Auto-join on URLs ending in `#meetringer-join`: mic and camera off, then Join |
+| `tones.js` | Ringtones (built-in, sounds folder via `index.txt`, own file), shared by popup and offscreen page |
+| `choose-sound.html` / `choose-sound.js` | Small window for picking your own ringtone (the toolbar popup closes when a file dialog opens) |
+| `add-sounds-windows.bat` / `add-sounds-mac.sh` | Copy Windows or Mac ringtones into `sounds` and write `sounds/index.txt` |
 | `feed.js` | Reads an organization-only calendar feed from the short-lived feed tab |
-| `offscreen.html` / `offscreen.js` | Plays the two-tone ring with Web Audio |
-| `ring.html` / `ring.js` | The bottom-right call window with Join and Dismiss |
+| `offscreen.html` / `offscreen.js` | Plays the ring with Web Audio (the background hands it the tone data, because offscreen pages cannot read storage) |
+| `ring.html` / `ring.js` | The bottom-right call window with Decline, Later and Join |
 | `popup.html` / `popup.js` | Toolbar popup: status, upcoming meetings, manual watch, settings, diagnostics log |
 | `icon128.png` | Extension and notification icon |
 | `calendar-feed.gs` | Google Apps Script web app that serves the calendar feed as JSON |
@@ -178,7 +205,7 @@ After any change to the files, open `chrome://extensions` and click the reload b
 ### Maintenance
 
 - **Detection patterns:** `PRESENT_PATTERNS` (someone inside) and `EMPTY_PATTERNS` (no one inside) at the top of `content.js`.
-- **Ring sound:** tone frequencies and rhythm in `offscreen.js`.
+- **Ring sounds:** built-in tones (`SYNTH`) and the tone list (`TONES`) in `tones.js`; loader file lists and labels in `add-sounds-windows.bat` / `add-sounds-mac.sh`.
 - **Timing:** watch window defaults in `DEFAULTS` in `background.js`; calendar refresh interval in `CAL_REFRESH_MS` (10 minutes).
 
 ## Alternatives considered
@@ -194,7 +221,7 @@ Before building Meet Ringer, these options were checked and rejected:
 
 The extension can also read a Google Calendar secret iCal address instead of the Apps Script feed. Many Workspace admins disable it, and the public address only returns events for a calendar made public, which a work calendar should never be.
 
-Where the admin allows it, setup takes one step: Google Calendar > Settings > your calendar > **Integrate calendar** section > copy **Secret address in iCal format** (ends in `/basic.ics`) > paste it into the extension's Calendar feed URL field.
+Where the admin allows it, setup takes one step: Google Calendar > Settings > your calendar > the section named after your organization (*<Company> calendar*) > copy **Secret address in iCal format** (ends in `/basic.ics`) > paste it into the extension's Calendar feed URL field.
 
 | | Apps Script feed (recommended) | Secret iCal address |
 |---|---|---|
@@ -214,8 +241,9 @@ Where the admin allows it, setup takes one step: Google Calendar > Settings > yo
 | Popup shows "Could not load the calendar" | Wrong token, `TOKEN` script property missing, deployment not updated, or access not allowed | Open the feed URL in the browser and check the response; redeploy a new version after script edits |
 | "The feed asks for a Google sign-in", or a CORS error in the extension console | Organization-only feed on extension 1.0.2 or older | Update to the latest version; stay signed in to the Google account that owns the feed |
 | Rings only when you switch to the pinned watch tab | Extension 1.0.3 or older | Update to the latest version |
-| Someone is in the meeting but nothing rings | Pre-join text not recognized (for example a non-English Meet UI) | Open Diagnostics log, click Copy log, and use the page text in it to extend the patterns in `content.js` |
+| Someone is in the meeting but nothing rings | First check **Google account** (several accounts signed in: the watch tab joins as a guest and sees nobody). Otherwise pre-join text not recognized (for example a non-English Meet UI) | Open Diagnostics log, click Copy log, and use the page text in it to extend the patterns in `content.js` |
 | Ring comes late | Energy or battery saver slows background tabs further | Turn off energy saver for the browser; the diagnostics log shows when the page text was read |
+| Sounds folder group empty or missing a sound | Loader not run, or list not refreshed | Run `add-sounds-windows.bat` / `add-sounds-mac.sh`, then the refresh icon next to Ringtone |
 | Load unpacked is greyed out | Browser policy blocks unpacked extensions | Ask IT to allow it |
 
 If the call window appears but no system notification does, allow notifications for the browser in the operating system (Windows: Settings > System > Notifications; macOS: System Settings > Notifications) and check that Do Not Disturb or Focus is off. If the browser says the manifest is missing when loading the extension, select the folder that directly contains `manifest.json`, not the folder above it.
@@ -232,5 +260,5 @@ If the call window appears but no system notification does, allow notifications 
 - The Apps Script runs as you and only returns title, start, end and Meet code for the next 24 hours. The token in the URL keeps others out: **treat the feed URL like a password** and never share or commit it.
 - The extension sends nothing to third parties. Calendar data and settings stay in the browser's local extension storage.
 - Watch tabs never join a meeting and cannot use the camera or microphone.
-- The optional Windows helper only accepts messages from the Meet Ringer extension (fixed extension ID). It only opens `https://meet.google.com/<code>` links, and only through a browser program named `chrome`, `chrome_proxy`, `brave`, `msedge` or `msedge_proxy`, keeping just the profile and app ID from the shortcut target. Its PowerShell source is in `native-helper/host.ps1`; `meetringer-host.bat` runs the same code base64-encoded, so PowerShell's script execution policy does not block it (stricter company controls still can). CI checks on every change that the encoded code is exactly `host.ps1`.
+- The optional Windows helper only accepts messages from the Meet Ringer extension (fixed extension ID). It only opens `https://meet.google.com/<code>` links (optionally with `?authuser=` and the `#meetringer-join` marker), and only through a browser program named `chrome`, `chrome_proxy`, `brave`, `msedge` or `msedge_proxy`, keeping just the profile and app ID from the shortcut target. Its PowerShell source is in `native-helper/host.ps1`; `meetringer-host.bat` runs the same code base64-encoded, so PowerShell's script execution policy does not block it (stricter company controls still can). CI checks on every change that the encoded code is exactly `host.ps1`.
 - The `key` in `manifest.json` is a public key that fixes the extension ID; the matching private key is never published.

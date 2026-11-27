@@ -21,7 +21,7 @@ jobs:
           node-version: 22
       - name: JavaScript syntax
         run: |
-          for f in content.js feed.js offscreen.js ring.js popup.js block-media.js; do node --check "$f"; done
+          for f in content.js feed.js offscreen.js ring.js popup.js block-media.js tones.js join.js choose-sound.js; do node --check "$f"; done
           node --input-type=module --check < background.js
       - name: manifest.json is valid JSON
         run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
